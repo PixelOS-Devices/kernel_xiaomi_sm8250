@@ -550,7 +550,7 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 
 out:
 	/* Discard possibly unused new_buffer */
-	kfree(new_buffer);
+	kvfree(new_buffer);
 	return buffer;
 }
 
@@ -679,7 +679,7 @@ static void binder_delete_free_buffer(struct binder_alloc *alloc,
 				buffer_start_page(buffer) + PAGE_SIZE);
 skip_freelist:
 	list_del(&buffer->entry);
-	kfree(buffer);
+	kvfree(buffer);
 }
 
 static void binder_free_buf_locked(struct binder_alloc *alloc,
@@ -860,7 +860,7 @@ int binder_alloc_mmap_handler(struct binder_alloc *alloc,
 
 	alloc->buffer = (void __user *)vma->vm_start;
 
-	alloc->pages = kcalloc(alloc->buffer_size / PAGE_SIZE,
+	alloc->pages = kvcalloc(alloc->buffer_size / PAGE_SIZE,
 			       sizeof(alloc->pages[0]),
 			       GFP_KERNEL);
 	if (alloc->pages == NULL) {
@@ -892,7 +892,7 @@ int binder_alloc_mmap_handler(struct binder_alloc *alloc,
 	return 0;
 
 err_alloc_buf_struct_failed:
-	kfree(alloc->pages);
+	kvfree(alloc->pages);
 	alloc->pages = NULL;
 err_alloc_pages_failed:
 	alloc->buffer = NULL;
@@ -939,7 +939,7 @@ void binder_alloc_deferred_release(struct binder_alloc *alloc)
 
 		list_del(&buffer->entry);
 		WARN_ON_ONCE(!list_empty(&alloc->buffers));
-		kfree(buffer);
+	    kvfree(buffer);
 	}
 
 	page_count = 0;
@@ -965,7 +965,7 @@ void binder_alloc_deferred_release(struct binder_alloc *alloc)
 		}
 	}
 	binder_alloc_unlock(alloc);
-	kfree(alloc->pages);
+	kvfree(alloc->pages);
 	if (alloc->vma_vm_mm)
 		mmdrop(alloc->vma_vm_mm);
 
