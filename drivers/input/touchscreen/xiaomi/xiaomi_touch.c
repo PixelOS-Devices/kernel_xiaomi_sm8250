@@ -1,4 +1,5 @@
 #include "xiaomi_touch.h"
+#include <linux/input/tp_common.h>
 
 static struct xiaomi_touch_pdata *touch_pdata;
 int mi_log_level;
@@ -488,6 +489,47 @@ static ssize_t resolution_factor_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d", factor);
 }
 
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+static ssize_t gamemode_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "set_update: %d bump_sample_rate: %d\n",
+		touch_pdata->set_update, touch_pdata->bump_sample_rate);
+}
+
+static ssize_t gamemode_store(struct kobject *kobj,
+				struct kobj_attribute *attr, const char *buf,
+				size_t count)
+{
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	if (val) {
+		touch_pdata->bump_sample_rate = true;
+		touch_pdata->set_update = true;
+		touch_pdata->touch_data->setModeValue(0, 1);
+		touch_pdata->touch_data->setModeValue(1, 1);
+		touch_pdata->touch_data->setModeValue(3, 34);
+		touch_pdata->touch_data->setModeValue(2, 99);
+		touch_pdata->touch_data->setModeValue(7, 0);
+	} else {
+		touch_pdata->bump_sample_rate = false;
+		touch_pdata->set_update = false;
+		touch_pdata->touch_data->resetMode(0);
+	}
+
+	return count;
+}
+
+static struct tp_common_ops gamemode_ops = {
+	.show = gamemode_show,
+	.store = gamemode_store,
+};
+#endif
+
 static DEVICE_ATTR(palm_sensor, (S_IRUGO | S_IWUSR | S_IWGRP), palm_sensor_show,
 		   palm_sensor_store);
 
@@ -665,6 +707,11 @@ static int xiaomi_touch_probe(struct platform_device *pdev)
 		ret = -ENODEV;
 		goto sys_group_err;
 	}
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+	// register gamemode node into tp_common
+	tp_common_set_gamemode_ops(&gamemode_ops);
+#endif
 
 	MI_TOUCH_LOGI(1, "%s %s: over\n", MI_TAG, __func__);
 
